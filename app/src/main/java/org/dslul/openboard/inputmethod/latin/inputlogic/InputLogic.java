@@ -436,7 +436,19 @@ public final class InputLogic {
      */
     public InputTransaction onCodeInput(final SettingsValues settingsValues,
             @Nonnull final Event event, final int keyboardShiftMode,
-            final int currentKeyboardScriptId, final LatinIME.UIHandler handler) {
+            final int currentKeyboardScriptId, final LatinIME.UIHandler handler) {       
+        final int primaryCode = event.getMCodePoint();
+        final char qaraqalpaqChar = checkQaraqalpaqDoubleTap(primaryCode);
+
+        if (qaraqalpaqChar != '\0') {
+            handleBackspace(settingsValues, keyboardShiftMode, currentKeyboardScriptId);
+
+            final Event newEvent = Event.createHardwareKeypressEvent(
+                    (int) qaraqalpaqChar, event.getMKeyCode(), event.getMScanCode(), event.getMFlags(), event.isKeyRepeat());
+
+            return onCodeInput(settingsValues, newEvent, keyboardShiftMode, currentKeyboardScriptId, handler);
+        }
+
         mWordBeingCorrectedByCursor = null;
         final Event processedEvent = mWordComposer.processEvent(event);
         final InputTransaction inputTransaction = new InputTransaction(settingsValues,
@@ -2375,4 +2387,45 @@ public final class InputLogic {
     public int getComposingLength() {
         return mWordComposer.size();
     }
+        private static final long QAR_DOUBLE_TAP_TIMEOUT_MS = 450;
+    private int mLastQarCode = 0;
+    private long mLastQarTime = 0;
+
+    private char checkQaraqalpaqDoubleTap(int currentCode) {
+        long currentTime = System.currentTimeMillis();
+        char replacement = '\0';
+
+        if (currentCode == mLastQarCode && (currentTime - mLastQarTime) <= QAR_DOUBLE_TAP_TIMEOUT_MS) {
+            replacement = getQaraqalpaqChar((char) currentCode);
+        }
+
+        if (replacement != '\0') {
+            mLastQarCode = 0;
+            mLastQarTime = 0;
+        } else {
+            mLastQarCode = currentCode;
+            mLastQarTime = currentTime;
+        }
+
+        return replacement;
+    }
+
+    private char getQaraqalpaqChar(char c) {
+        switch (c) {
+            case 'a': return 'á';
+            case 'A': return 'Á';
+            case 'i': return 'ı';
+            case 'I': return 'Í';
+            case 'g': return 'ģ';
+            case 'G': return 'Ǵ';
+            case 'n': return 'ń';
+            case 'N': return 'Ń';
+            case 'o': return 'ó';
+            case 'O': return 'Ó';
+            case 'u': return 'ú';
+            case 'U': return 'Ú';
+            default: return '\0';
+        }
+    }
+
 }
