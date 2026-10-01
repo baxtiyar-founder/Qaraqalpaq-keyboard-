@@ -2427,5 +2427,3 @@ public final class InputLogic {
             default: return '\0';
         }
     }
-
-}
